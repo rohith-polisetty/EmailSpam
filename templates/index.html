@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Email Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2); /* Softer gradient */
+            color: #333;
+            overflow: hidden; /* Prevent scrollbar during loading */
+        }
+
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 16px; /* More rounded corners */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Deeper shadow */
+            width: 650px;
+            max-width: 95%;
+            transition: transform 0.3s ease-in-out; /* Smooth transition for loading */
+        }
+        .container.loading{
+            transform: scale(0.95);
+            opacity: 0.7;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #283e51; /* Darker heading color */
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px 45px 15px 15px; /* Added padding for icon */
+            border: 1px solid #dce1e6;
+            border-radius: 8px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 16px;
+            line-height: 1.6;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        textarea:focus{
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52,152,219,0.2);
+        }
+        .input-group i {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            color: #bdc3c7;
+            pointer-events: none;
+        }
+
+        button {
+            background: linear-gradient(to right, #2980b9, #3498db); /* Gradient button */
+            color: white;
+            padding: 14px 22px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 17px;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        button:active{
+            transform: translateY(0px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #result {
+            margin-top: 30px;
+            font-size: 19px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s, transform 0.4s;
+        }
+        #result.show{
+            opacity: 1;
+            transform: translateY(0px);
+        }
+
+        .spam {
+            color: #c0392b; /* Darker red */
+        }
+
+        .not-spam {
+            color: #27ae60; /* Darker green */
+        }
+        .loading{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            display: none;
+        }
+        .loading img{
+            width: 70px;
+            height: 70px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <h1>Spam Email Detector</h1>
+        <div class="input-group">
+            <textarea id="email-text" placeholder="Paste body of Email here..."></textarea>
+            <i class="fas fa-envelope"></i>
+        </div>
+        <button id="submit-button">Check for Spam</button>
+        <div class="loading" id="loading">
+            <img src="https://i.gifer.com/origin/34/34338481510973998e0a2629687b89a1.gif" alt="loading">
+        </div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const emailInput = document.getElementById('email-text');
+        const submitButton = document.getElementById('submit-button');
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.getElementById('loading');
+        const container = document.getElementById('container');
+
+        submitButton.addEventListener('click', async () => {
+            const email = emailInput.value;
+            resultDiv.classList.remove('show');
+            resultDiv.textContent = "";
+            loadingDiv.style.display = "block";
+            container.classList.add("loading");
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                loadingDiv.style.display = "none";
+                container.classList.remove("loading");
+                resultDiv.innerHTML = data.is_spam ? 'This is <span class="spam">SPAM!</span>' : 'This is <span class="not-spam">NOT SPAM.</span>';
+                setTimeout(()=>{
+                    resultDiv.classList.add('show');
+                },100);
+            } catch (error) {
+                console.error("Error:", error);
+                loadingDiv.style.display = "none";
+                container.classList.remove("loading");
+                resultDiv.textContent = "An error occurred. Please try again later.";
+                setTimeout(()=>{
+                    resultDiv.classList.add('show');
+                },100);
+            }
+        });
+    </script>
+</body>
+</html>
